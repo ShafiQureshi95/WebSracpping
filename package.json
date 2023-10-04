@@ -17,7 +17,8 @@
   "main": "./lib/index.js",
   "dependencies": {
     "@babel/highlight": "^7.22.10",
-    "chalk": "^2.4.2"
+    "chalk": "^2.4.2",
+    "puppeteer": "^21.3.6"
   },
   "devDependencies": {
     "strip-ansi": "^4.0.0"
