@@ -1,6 +1,7 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 
+
 (async () => {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
@@ -41,16 +42,71 @@ const fs = require('fs');
       const cityWithList = ['Charlottenburg', 'Friedrichshain', 'Kreuzberg', 'Mitte', 'Prenzlauer Berg'];
       let restaurantNames = [];
 
+
       if (cityWithList.includes(correctCityPlace)) {
-        restaurantNames = await page.$$eval(
-          'ul.list--arrowlist li a',
-          (elements) => elements.map((element) => element.textContent.trim())
-        );
+        const restaurants = await page.$$('ul.list--arrowlist li a');
+
+        for (const restaurant of restaurants) {
+          const name = await page.evaluate(element => element.textContent.trim(), restaurant);
+          let sourceUrl = await page.evaluate(element => element.getAttribute('href'), restaurant);
+          const urlToTrim = sourceUrl
+          const parts = urlToTrim.split('/');
+
+          const typeIndex = parts.indexOf('adressen') + 1;
+          let category = parts[typeIndex];
+          category = category.replace('-restaurant', '');
+          const baseUrl = "https://www.berlin.de";
+          sourceUrl = baseUrl + sourceUrl
+          restaurantNames.push({ name, sourceUrl, category });
+        }
       } else {
         restaurantNames = await page.$$eval(
-          'article.modul-teaser.teaser--place.basis .title',
-          (elements) => elements.map((element) => element.textContent.trim())
+          'article.modul-teaser.teaser--place.basis',
+          (elements) => elements.map((element) => {
+            const name = element.querySelector('.title').textContent.trim();
+            let sourceUrl = element.querySelector('a.more').getAttribute('href');
+            const urlToTrim = sourceUrl
+            const parts = urlToTrim.split('/');
+
+            const typeIndex = parts.indexOf('adressen') + 1;
+            let category = parts[typeIndex];
+
+            category = category.replace('-restaurant', '');
+            const baseUrl = "https://www.berlin.de";
+            sourceUrl = baseUrl + sourceUrl
+            return { name, sourceUrl, category };
+          })
         );
+      }
+
+      for (const restaurant of restaurantNames) {
+        const { sourceUrl } = restaurant;
+
+        await page.goto(sourceUrl);
+
+        const restaurantData = await page.evaluate(() => {
+          const nameElement = document.querySelector('.list--contact div:first-child');
+          const addressElement = document.querySelector('.list--contact div:nth-child(2)');
+          const cityDistrictElement = document.querySelector('.list--contact span');
+          const phoneElement = document.querySelector('.list--contact dt.tel + dd span a');
+
+          let cityDistrict = null;
+
+          if (cityDistrictElement) {
+            const parts = cityDistrictElement.textContent.trim().split('–');
+            cityDistrict = parts[parts.length - 1].trim();
+          }
+          const fullAddress = nameElement && addressElement ? nameElement.textContent.trim() + ' ' + addressElement.textContent.trim() : null;
+          return {
+            address: fullAddress,
+            cityDistrict,
+            Telefon: phoneElement ? phoneElement.textContent.trim() : null
+          };
+        });
+
+        restaurant.address = restaurantData.address;
+        restaurant.cityDistrict = restaurantData.cityDistrict;
+        restaurant.Telefon = restaurantData.Telefon;
       }
 
       cityData.push({
@@ -58,6 +114,7 @@ const fs = require('fs');
         cityUrl: cityUrl,
         restaurantNames: restaurantNames
       });
+
     }
 
     // Save data to a JSON file
