@@ -7,7 +7,12 @@ const fs = require('fs');
   const page = await browser.newPage();
 
   try {
-    await page.goto('https://www.berlin.de/restaurants/stadtteile/');
+    try {
+      await page.goto('https://www.berlin.de/restaurants/stadtteile/', { timeout: 30000 });
+    } catch (error) {
+      console.error('Navigation timeout error:', error);
+  
+    }
 
     const citiesToInclude = ['Charlottenburg', 'Friedrichshain', 'Hellersdorf', 'Hohenschönhausen', 'Köpenick', 'Kreuzberg', 'Lichtenberg', 'Marzahn', 'Mitte', 'Neukölln', 'Pankow', 'Prenzlauer Berg', 'Reinickendorf', 'Schöneberg', 'Spandau', 'Steglitz', 'Tempelhof', 'Tiergarten', 'Treptow', 'Wedding', 'Weißensee', 'Wilmersdorf', 'Zehlendorf'];
 
@@ -90,20 +95,54 @@ const fs = require('fs');
           const addressElement = document.querySelector('.list--contact div:nth-child(2)');
           const cityDistrictElement = document.querySelector('.list--contact span');
           const phoneElement = document.querySelector('.list--contact dt.tel + dd span a');
+          const streetElement = document.querySelector('.list--contact div:nth-child(2)');
+          const codeElement = document.querySelector('.list--contact span');
 
+          let street = null;
+          let code = null;
+        
+          if (streetElement) {
+            street = streetElement.textContent.trim();
+          }
+          if (codeElement) {
+            const parts = codeElement.textContent.trim().split('–');
+            code = parts[0].trim();
+          }
+        
           let cityDistrict = null;
-
+        
           if (cityDistrictElement) {
             const parts = cityDistrictElement.textContent.trim().split('–');
             cityDistrict = parts[parts.length - 1].trim();
           }
+        
+          let streetName = null;
+          let postalCode = null;
+          let district = null;
+        
+          if (addressElement) {
+            const addressParts = addressElement.textContent.trim().split('\n').map(part => part.trim());
+            streetName = addressParts[0];
+            const postalCodeAndDistrict = addressParts[1];
+            if (postalCodeAndDistrict) {
+              const postalCodeAndDistrictParts = postalCodeAndDistrict.split(' ');
+              postalCode = postalCodeAndDistrictParts[0];
+              district = postalCodeAndDistrictParts.slice(1).join(' ');
+            }
+          }
+        
           const fullAddress = nameElement && addressElement ? nameElement.textContent.trim() + ' ' + addressElement.textContent.trim() : null;
+          
           return {
-            address: fullAddress,
+            streetName,
+            postalCode,
+            district,
+            address: street + code,
             cityDistrict,
             Telefon: phoneElement ? phoneElement.textContent.trim() : null
           };
         });
+        
 
         restaurant.address = restaurantData.address;
         restaurant.cityDistrict = restaurantData.cityDistrict;
@@ -129,7 +168,7 @@ const fs = require('fs');
 
     }
 
-    // Save data to a JSON file
+    
     const jsonOutput = JSON.stringify(restaurantList, null, 2);
     fs.writeFileSync('city_restaurants.json', jsonOutput);
 
