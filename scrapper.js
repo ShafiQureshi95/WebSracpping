@@ -20,6 +20,7 @@ const fs = require('fs');
     );
 
     const cityData = [];
+    const restaurantList = [];
 
     for (const cityName of cityNames) {
       const cityNameToBeReplaced = ['Hohenschönhausen', 'Köpenick', 'Neukölln', 'Schöneberg', 'Weißensee'];
@@ -109,16 +110,27 @@ const fs = require('fs');
         restaurant.Telefon = restaurantData.Telefon;
       }
 
-      cityData.push({
-        cityName: correctCityPlace,
-        cityUrl: cityUrl,
-        restaurantNames: restaurantNames
-      });
+      // cityData.push({
+      //   cityName: correctCityPlace,
+      //   cityUrl: cityUrl,
+      //   restaurantNames: restaurantNames
+      // });
+
+      for (const restaurant of restaurantNames) {
+        restaurantList.push({
+          name: restaurant.name,
+          sourceUrl: restaurant.sourceUrl,
+          category: restaurant.category,
+          address: restaurant.address,
+          cityDistrict: restaurant.cityDistrict,
+          Telefon: restaurant.Telefon,
+        });
+      }
 
     }
 
     // Save data to a JSON file
-    const jsonOutput = JSON.stringify(cityData, null, 2);
+    const jsonOutput = JSON.stringify(restaurantList, null, 2);
     fs.writeFileSync('city_restaurants.json', jsonOutput);
 
     console.log('Data saved to city_restaurants.json');
